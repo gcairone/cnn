@@ -26,8 +26,8 @@ class Convolutional:
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
-        self.weights = ...  
-        self.bias = ...     
+        self.weights = np.zeros(shape=(kernel_size, kernel_size))  
+        # self.bias = ...     
 
     def forward(self, x):
         batch_size, _, input_height, input_width = x.shape
@@ -47,7 +47,7 @@ class Convolutional:
                                 x[b, c_in, i:i+kernel_height, j:j+kernel_width] * self.weights[c_out, c_in]
                             )
         
-        output += self.bias.reshape(1, -1, 1, 1)  
+        # output += self.bias.reshape(1, -1, 1, 1)  
         
         return output
     
@@ -58,7 +58,6 @@ class Convolutional:
         
         grad_input = np.zeros_like(x)
         grad_weights = np.zeros_like(self.weights)
-        grad_bias = np.sum(grad_output, axis=(0, 2, 3))
         
         for b in range(batch_size):
             for c_out in range(self.out_channels):
@@ -73,7 +72,6 @@ class Convolutional:
                             )
         
         self.weights -= learning_rate * grad_weights
-        self.bias -= learning_rate * grad_bias
         
         return grad_input
 

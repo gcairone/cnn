@@ -26,11 +26,20 @@ class SimpleNet:
         
         batch_size = x.shape[0]
         grad_logits = 2.0 * (logits - y) / batch_size
-        grad_fc2 = self.fc2.backward(self.fc1.forward(self.flatten(self.pool.forward(self.conv2.forward(self.pool.forward(self.conv1.forward(x)))))), grad_logits, learning_rate)
-        grad_fc1 = self.fc1.backward(self.flatten(self.pool.forward(self.conv2.forward(self.pool.forward(self.conv1.forward(x))))), grad_fc2, learning_rate)
-        grad_pool2 = self.pool.backward(self.conv2.backward(self.pool.forward(self.conv1.forward(x)), grad_fc1, learning_rate))
-        grad_conv2 = self.conv2.backward(self.pool.forward(self.conv1.forward(x)), grad_pool2, learning_rate)
-        grad_pool1 = self.pool.backward(self.conv1.backward(x, grad_conv2, learning_rate))
+        out_conv1 = self.conv1.forward(x)
+        out_pool1 = self.pool.forward(out_conv1)
+        out_conv2 = self.conv2.forward(out_pool1)
+        out_pool2 = self.pool.forward(out_conv2)
+        out_flat = self.flatten(out_pool2)
+        out_fc1 = self.fc1.forward(out_flat)
+        out_fc2 = self.fc2.forward(out_fc1)
+
+        grad_fc2 = self.fc2.backward(out_fc1, grad_logits, learning_rate)
+        grad_fc1 = self.fc1.backward(out_flat, grad_fc2, learning_rate)
+        grad_flat = self.flatten.backward(out_pool2, grad_fc1)
+        grad_pool2 = self.pool.backward(out_conv2, grad_flat)
+        grad_conv2 = self.conv2.backward(out_pool1, grad_pool2, learning_rate)
+        grad_pool1 = self.pool.backward(out_conv1, grad_conv2)
         grad_conv1 = self.conv1.backward(x, grad_pool1, learning_rate)
         
         loss = mse_loss(logits, y)
