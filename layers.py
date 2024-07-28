@@ -1,16 +1,37 @@
 import numpy as np
 
-class Linear:
-    def __init__(self, in_features, out_features):
-        self.in_features = in_features
-        self.out_features = out_features
-        self.weights = np.zeros(shape=(in_features, out_features))  
-        self.bias = np.zeros(shape=(out_features))     
+
+class Layer:
+    def __init__(self, activation=None):
+        self.activation = activation
 
     def forward(self, x):
-        return x @ self.weights + self.bias  #   output lineare
+        raise NotImplementedError("This method should be overridden by subclasses")
+
+    def __call__(self, x):
+        return self.forward(x)
+
+    def backward(self, x, grad_output, learning_rate):
+        raise NotImplementedError("This method should be overridden by subclasses")
+
+class Linear(Layer):
+    def __init__(self, in_features, out_features, activation=None):
+        super().__init__(activation)
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weights = np.zeros((in_features, out_features))  
+        self.bias = np.zeros((out_features))     
+
+    def forward(self, x):
+        z = x @ self.weights + self.bias  
+        if self.activation:
+            return self.activation(z)
+        return z
     
     def backward(self, x, grad_output, learning_rate):
+        if self.activation:
+            grad_output = grad_output * self.activation.der(x @ self.weights + self.bias)
+        
         grad_weights = x.T @ grad_output  
         grad_bias = np.sum(grad_output, axis=0) 
         grad_input = grad_output @ self.weights.T  
@@ -19,6 +40,15 @@ class Linear:
         self.bias -= learning_rate * grad_bias
         
         return grad_input
+
+
+
+
+
+
+
+
+
 
 
 class Convolutional:

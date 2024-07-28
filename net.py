@@ -1,5 +1,15 @@
 import numpy as np
 from layers import *
+
+class FCNet:
+    def __init__(self):
+        self.fc1 = Linear(754, 20)
+        self.fc2 = Linear(20, 10)
+    def forward(self, x):
+        x = self.fc1(x)
+        x = self.fc2(x)
+        return x
+
 class SimpleNet:
     def __init__(self):
         self.conv1 = Convolutional(in_channels=1, out_channels=16, kernel_size=(3, 3))
@@ -57,3 +67,4 @@ class SimpleNet:
     def predict(self, x):
         logits = self.forward(x)
         return np.argmax(logits, axis=1)
+    
