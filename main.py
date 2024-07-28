@@ -14,7 +14,6 @@ layer_2 = Linear(2, 2, activation=Softmax(), optimizer=optimizer)
 # Input fittizio (matrice bidimensionale)
 x = np.array([[0.0, 1.0, 2.0]])  # 1 esempio, 3 caratteristiche
 
-# Avanti
 hid = layer_1(x)
 output = layer_2(hid)
 print("Output:", output)
