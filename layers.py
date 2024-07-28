@@ -1,9 +1,15 @@
 import numpy as np
+from functions import ActivationFunction
+from optimizer import *
 
 
 class Layer:
-    def __init__(self, activation=None):
+    def __init__(self, activation, optimizer):
         self.activation = activation
+        self.optimizer = optimizer
+        self.params = []
+        self.grads = []
+
 
     def forward(self, x):
         raise NotImplementedError("This method should be overridden by subclasses")
@@ -14,43 +20,44 @@ class Layer:
     def backward(self, x, grad_output, learning_rate):
         raise NotImplementedError("This method should be overridden by subclasses")
 
+    def update_params(self):
+        if self.optimizer:
+            self.optimizer.step(self.params, self.grads)
+
 class Linear(Layer):
-    def __init__(self, in_features, out_features, activation=None):
-        super().__init__(activation)
+    def __init__(self, in_features, out_features, activation=None, optimizer=None):
+        super().__init__(activation, optimizer)
         self.in_features = in_features
         self.out_features = out_features
-        self.weights = np.zeros((in_features, out_features))  
-        self.bias = np.zeros((out_features))     
+        self.weights = np.random.randn(in_features, out_features) * 0.01
+        self.bias = np.random.randn(out_features) * 0.01
+
+        self.params = [self.weights, self.bias]
 
     def forward(self, x):
-        z = x @ self.weights + self.bias  
+        self.input = x
+        z = x @ self.weights + self.bias  # Output lineare
         if self.activation:
             return self.activation(z)
         return z
     
-    def backward(self, x, grad_output, learning_rate):
+    def backward(self, grad_output):
         if self.activation:
-            grad_output = grad_output * self.activation.der(x @ self.weights + self.bias)
-        
-        grad_weights = x.T @ grad_output  
-        grad_bias = np.sum(grad_output, axis=0) 
-        grad_input = grad_output @ self.weights.T  
-        
-        self.weights -= learning_rate * grad_weights
-        self.bias -= learning_rate * grad_bias
+            grad_output = grad_output * self.activation.der(self.input @ self.weights + self.bias)
+
+        grad_weights = self.input.T @ grad_output
+        grad_bias = np.sum(grad_output, axis=0)
+        grad_input = grad_output @ self.weights.T
+
+        self.grads = [grad_weights, grad_bias]
+        self.update_params()
         
         return grad_input
 
 
 
 
-
-
-
-
-
-
-
+"""
 class Convolutional:
     def __init__(self, in_channels, out_channels, kernel_size):
         self.in_channels = in_channels
@@ -149,3 +156,8 @@ class Pooling:
                         grad_input[b, c, i*pool_height:(i+1)*pool_height, j*pool_width:(j+1)*pool_width] += mask * grad_output[b, c, i, j]
         
         return grad_input
+
+"""
+
+
+

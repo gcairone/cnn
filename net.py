@@ -10,6 +10,8 @@ class FCNet:
         x = self.fc2(x)
         return x
 
+
+"""
 class SimpleNet:
     def __init__(self):
         self.conv1 = Convolutional(in_channels=1, out_channels=16, kernel_size=(3, 3))
@@ -68,3 +70,5 @@ class SimpleNet:
         logits = self.forward(x)
         return np.argmax(logits, axis=1)
     
+
+"""
