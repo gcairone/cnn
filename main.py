@@ -1,26 +1,27 @@
 import numpy as np
 from dataset import Loader  
-from net import SimpleNet  
+from net import SequentialNet  
+import layer
+from activation import *
+from optimizer import *
+from loss import *
+from eval import calculate_accuracy
+
 
 train_loader = Loader('data/mnist_train.csv', batch_size=16)
 test_loader = Loader('data/mnist_test.csv', batch_size=16)
 
-model = SimpleNet()
+model = SequentialNet()
+model.loss_function = CrossEntropyLoss()
+model.layers = [
+    layer.Linear(784, 64, activation=ReLU(), optimizer=SGD(learning_rate=0.01)),
+    layer.Linear(64, 32, activation=ReLU(), optimizer=SGD(learning_rate=0.01)),
+    layer.Linear(32, 10, activation=Softmax(), optimizer=SGD(learning_rate=0.01))
+]
+
 
 epochs = 10
 
-def calculate_accuracy(loader, model, max):
-    correct = 0
-    total = 0
-    for x, y in loader:
-        outputs = model.forward(x)
-        predicted = np.argmax(outputs, axis=1)
-        labels = np.argmax(y, axis=1)
-        correct += np.sum(predicted == labels)
-        total += labels.shape[0]
-        if total > max:
-            break
-    return correct, total
 
 for epoch in range(epochs):
     loss = 0.0

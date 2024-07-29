@@ -28,7 +28,6 @@ class Softmax(ActivationFunction):
         return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
 
     def der(self, x):
-        # Derivata del softmax non è generalmente utilizzata in questa forma,
-        # ma nell'ambito della funzione di perdita cross-entropy
+        # softmax gradient not normally used
         softmax = self.__call__(x)
         return softmax * (1 - softmax)
