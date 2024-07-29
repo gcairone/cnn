@@ -5,6 +5,7 @@ from optimizer import *
 
 class Layer:
     def __init__(self, activation, optimizer):
+        self.input = None
         self.activation = activation
         self.optimizer = optimizer
         self.params = []

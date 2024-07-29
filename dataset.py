@@ -1,32 +1,36 @@
 import pandas as pd
 import numpy as np
 
-# Carica i dati dai file CSV
-train_df = pd.read_csv('data/mnist_train.csv')
-test_df = pd.read_csv('data/mnist_test.csv')
+class Loader:
+    def __init__(self, data_path, batch_size=32, shuffle=True):
+        self.data = pd.read_csv(data_path)
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.index = 0
+        self.num_samples = self.data.shape[0]
+        self.num_batches = self.num_samples // self.batch_size
+        if self.shuffle:
+            self.data = self.data.sample(frac=1).reset_index(drop=True)
 
-# Separare le etichette dai dati
-x_train = train_df.drop('label', axis=1).values
-y_train = train_df['label'].values
-x_test = test_df.drop('label', axis=1).values
-y_test = test_df['label'].values
+    def __iter__(self):
+        self.index = 0
+        if self.shuffle:
+            self.data = self.data.sample(frac=1).reset_index(drop=True)
+        return self
 
-# Normalizza i valori dei pixel per essere compresi tra 0 e 1
-x_train = x_train.astype('float32') / 255.0
-x_test = x_test.astype('float32') / 255.0
+    def __next__(self):
+        if self.index >= self.num_samples:
+            raise StopIteration
 
-# Reshape i dati per aggiungere una dimensione extra per il canale di colore (scala di grigi)
-x_train = x_train.reshape(-1, 28, 28, 1)
-x_test = x_test.reshape(-1, 28, 28, 1)
+        batch_data = self.data.iloc[self.index:self.index + self.batch_size]
+        self.index += self.batch_size
 
-# Convertire le etichette in matrici di classi binarie (one-hot encoding)
-def to_categorical(y, num_classes):
-    return np.eye(num_classes)[y]
+        x_batch = batch_data.drop('label', axis=1).values
+        y_batch = batch_data['label'].values
 
-y_train = to_categorical(y_train, 10)
-y_test = to_categorical(y_test, 10)
+        x_batch = x_batch.astype('float32') / 255.0
+        x_batch = x_batch.reshape(-1, 784)
 
-print(f"x_train shape: {x_train.shape}")
-print(f"y_train shape: {y_train.shape}")
-print(f"x_test shape: {x_test.shape}")
-print(f"y_test shape: {y_test.shape}")
+        y_batch = np.eye(10)[y_batch]
+
+        return x_batch, y_batch

@@ -1,14 +1,32 @@
 import numpy as np
 from layers import *
+from optimizer import *
+from functions import *
+from loss import *
 
-class FCNet:
+class SimpleNet:
     def __init__(self):
-        self.fc1 = Linear(754, 20)
-        self.fc2 = Linear(20, 10)
+        self.fc1 = Linear(784, 64, activation=Sigmoid(), optimizer=SGD(learning_rate=0.01))
+        self.fc2 = Linear(64, 10, activation=Softmax(), optimizer=SGD(learning_rate=0.01))
+        self.loss_function = CrossEntropyLoss()
     def forward(self, x):
         x = self.fc1(x)
         x = self.fc2(x)
         return x
+    def __call__(self, x):
+        return self.forward(x)
+    def backward(self, x, y_true):
+        y_pred = self.forward(x)
+        loss = self.loss_function(y_true, y_pred)
+        grad = self.loss_function.grad(y_true, y_pred)
+        grad = self.fc2.backward(grad)
+        grad = self.fc1.backward(grad)
+
+
+        return loss
+
+    
+    
 
 
 """

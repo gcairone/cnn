@@ -1,38 +1,34 @@
 import numpy as np
-from functions import ReLU, Sigmoid, Softmax
-from layers import Linear
-from loss import MSELoss, CrossEntropyLoss
-from optimizer import SGD, Adam
+from dataset import Loader  
+from net import SimpleNet  
 
-# Esempio di utilizzo
-# activation_function = Sigmoid()  # O Sigmoid(), Softmax(), etc.
-optimizer = SGD(learning_rate=0.01)  # O Adam()
+train_loader = Loader('data/mnist_train.csv', batch_size=16)
+test_loader = Loader('data/mnist_test.csv', batch_size=16)
 
-layer_1 = Linear(3, 2, activation=Sigmoid(), optimizer=optimizer)
-layer_2 = Linear(2, 2, activation=Softmax(), optimizer=optimizer)
+model = SimpleNet()
 
-# Input fittizio (matrice bidimensionale)
-x = np.array([[0.0, 1.0, 2.0]])  # 1 esempio, 3 caratteristiche
+epochs = 10
 
-hid = layer_1(x)
-output = layer_2(hid)
-print("Output:", output)
+def calculate_accuracy(loader, model, max):
+    correct = 0
+    total = 0
+    for x, y in loader:
+        outputs = model.forward(x)
+        predicted = np.argmax(outputs, axis=1)
+        labels = np.argmax(y, axis=1)
+        correct += np.sum(predicted == labels)
+        total += labels.shape[0]
+        if total > max:
+            break
+    return correct, total
 
-# Target fittizio
-y_true = np.array([[1.0, 0.0]])
-
-# Funzione di perdita
-loss_function = CrossEntropyLoss()  # O CrossEntropyLoss()
-
-# Calcola la perdita
-loss = loss_function(y_true, output)
-print("Loss:", loss)
-
-# Calcola il gradiente della perdita rispetto all'output
-grad_output = loss_function.grad(y_true, output)
-print("Gradient Output:", grad_output)
-
-# Indietro
-grad_1 = layer_2.backward(grad_output)
-grad_input = layer_1.backward(grad_1)
-print("Gradient Input:", grad_input)
+for epoch in range(epochs):
+    loss = 0.0
+    for x, y in train_loader:
+        l = model.backward(x, y)
+        loss += l
+    
+    train_correct, train_total = calculate_accuracy(train_loader, model, 200)
+    test_correct, test_total = calculate_accuracy(test_loader, model, 200)
+    
+    print(f"Epoch: {epoch}, training_loss={loss:.4f}, train_accuracy={train_correct}/{train_total}, test_accuracy={test_correct}/{test_total}")
