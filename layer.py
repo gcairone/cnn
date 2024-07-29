@@ -56,109 +56,86 @@ class Linear(Layer):
         return grad_input
 
 
-
-
-"""
-class Convolutional:
-    def __init__(self, in_channels, out_channels, kernel_size):
+class Convolutional(Layer):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, activation=None, optimizer=None):
+        super().__init__(activation, optimizer)
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.kernel_size = kernel_size
-        self.weights = np.zeros(shape=(kernel_size, kernel_size))  
-        # self.bias = ...     
+        self.stride = stride
+        self.padding = padding
+        
+        self.weights = np.random.randn(out_channels, in_channels, kernel_size, kernel_size) * 0.01
+        self.bias = np.zeros((out_channels, 1, 1))
+        
+        self.params = [self.weights, self.bias]
+
+    def _pad(self, x):
+        if self.padding > 0:
+            return np.pad(x, ((0, 0), (0, 0), (self.padding, self.padding), (self.padding, self.padding)), mode='constant')
+        return x
 
     def forward(self, x):
-        batch_size, _, input_height, input_width = x.shape
-        _, _, kernel_height, kernel_width = self.weights.shape
+        self.input = x
+        batch_size, _, in_height, in_width = x.shape
         
-        output_height = input_height - kernel_height + 1
-        output_width = input_width - kernel_width + 1
+        x_padded = self._pad(x)
         
-        output = np.zeros((batch_size, self.out_channels, output_height, output_width))
+        out_height = (in_height + 2 * self.padding - self.kernel_size) // self.stride + 1
+        out_width = (in_width + 2 * self.padding - self.kernel_size) // self.stride + 1
         
-        for b in range(batch_size):
-            for c_out in range(self.out_channels):
-                for c_in in range(self.in_channels):
-                    for i in range(output_height):
-                        for j in range(output_width):
-                            output[b, c_out, i, j] += np.sum(
-                                x[b, c_in, i:i+kernel_height, j:j+kernel_width] * self.weights[c_out, c_in]
-                            )
+        output = np.zeros((batch_size, self.out_channels, out_height, out_width))
+        for i in range(out_height):
+            for j in range(out_width):
+                h_start = i * self.stride
+                h_end = h_start + self.kernel_size
+                w_start = j * self.stride
+                w_end = w_start + self.kernel_size
+                
+                receptive_field = x_padded[:, :, h_start:h_end, w_start:w_end]
+                output[:, :, i, j] = np.sum(receptive_field[:, np.newaxis, :, :, :] * self.weights, axis=(2, 3, 4))
         
-        # output += self.bias.reshape(1, -1, 1, 1)  
+        output += self.bias
         
+        if self.activation:
+            return self.activation(output)
         return output
-    
-    def backward(self, x, grad_output, learning_rate):
-        batch_size, _, input_height, input_width = x.shape
-        _, _, kernel_height, kernel_width = self.weights.shape
-        _, _, output_height, output_width = grad_output.shape
-        
-        grad_input = np.zeros_like(x)
-        grad_weights = np.zeros_like(self.weights)
-        
-        for b in range(batch_size):
-            for c_out in range(self.out_channels):
-                for c_in in range(self.in_channels):
-                    for i in range(output_height):
-                        for j in range(output_width):
-                            grad_weights[c_out, c_in] += np.sum(
-                                x[b, c_in, i:i+kernel_height, j:j+kernel_width] * grad_output[b, c_out, i, j]
-                            )
-                            grad_input[b, c_in, i:i+kernel_height, j:j+kernel_width] += (
-                                self.weights[c_out, c_in] * grad_output[b, c_out, i, j]
-                            )
-        
-        self.weights -= learning_rate * grad_weights
-        
-        return grad_input
 
-class Pooling:
-    def __init__(self, pool_size):
-        self.pool_size = pool_size
-        self.cache = None
-    
-    def forward(self, x):
-        self.cache = x  
-        
-        batch_size, num_channels, input_height, input_width = x.shape
-        pool_height, pool_width = self.pool_size
-        
-        output_height = input_height // pool_height
-        output_width = input_width // pool_width
-        
-        output = np.zeros((batch_size, num_channels, output_height, output_width))
-        
-        for b in range(batch_size):
-            for c in range(num_channels):
-                for i in range(output_height):
-                    for j in range(output_width):
-                        window = x[b, c, i*pool_height:(i+1)*pool_height, j*pool_width:(j+1)*pool_width]
-                        output[b, c, i, j] = np.max(window)
-        
-        return output
-    
     def backward(self, grad_output):
-        x = self.cache
-        batch_size, num_channels, input_height, input_width = x.shape
-        pool_height, pool_width = self.pool_size
+        batch_size, _, out_height, out_width = grad_output.shape
         
-        output_height, output_width = grad_output.shape[2], grad_output.shape[3]
+        if self.activation:
+            grad_output = grad_output * self.activation.der(self.forward(self.input))
         
-        grad_input = np.zeros_like(x)
+        grad_weights = np.zeros_like(self.weights)
+        grad_bias = np.sum(grad_output, axis=(0, 2, 3)).reshape(self.out_channels, 1, 1)
+        grad_input = np.zeros_like(self.input)
         
-        for b in range(batch_size):
-            for c in range(num_channels):
-                for i in range(output_height):
-                    for j in range(output_width):
-                        window = x[b, c, i*pool_height:(i+1)*pool_height, j*pool_width:(j+1)*pool_width]
-                        max_value = np.max(window)
-                        mask = (window == max_value)
-                        grad_input[b, c, i*pool_height:(i+1)*pool_height, j*pool_width:(j+1)*pool_width] += mask * grad_output[b, c, i, j]
+        padded_input = self._pad(self.input)
+        padded_grad_input = self._pad(grad_input)
+        
+        for i in range(out_height):
+            for j in range(out_width):
+                h_start = i * self.stride
+                h_end = h_start + self.kernel_size
+                w_start = j * self.stride
+                w_end = w_start + self.kernel_size
+                
+                receptive_field = padded_input[:, :, h_start:h_end, w_start:w_end]
+                for k in range(self.out_channels):
+                    grad_weights[k] += np.sum(receptive_field * grad_output[:, k:k+1, i:i+1, j:j+1], axis=0)
+                
+                for c in range(self.in_channels):
+                    padded_grad_input[:, c, h_start:h_end, w_start:w_end] += np.sum(
+                        self.weights[:, c] * grad_output[:, :, i:i+1, j:j+1], axis=1
+                    )
+        
+        if self.padding > 0:
+            grad_input = padded_grad_input[:, :, self.padding:-self.padding, self.padding:-self.padding]
+        else:
+            grad_input = padded_grad_input
+        
+        self.grads = [grad_weights, grad_bias]
+        self.update_params()
         
         return grad_input
-
-"""
-
-
-

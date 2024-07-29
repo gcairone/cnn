@@ -12,12 +12,7 @@ train_loader = Loader('data/mnist_train.csv', batch_size=16)
 test_loader = Loader('data/mnist_test.csv', batch_size=16)
 
 model = SequentialNet()
-model.loss_function = CrossEntropyLoss()
-model.layers = [
-    layer.Linear(784, 64, activation=ReLU(), optimizer=SGD(learning_rate=0.01)),
-    layer.Linear(64, 32, activation=ReLU(), optimizer=SGD(learning_rate=0.01)),
-    layer.Linear(32, 10, activation=Softmax(), optimizer=SGD(learning_rate=0.01))
-]
+
 
 
 epochs = 10
